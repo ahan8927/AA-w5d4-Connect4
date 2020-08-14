@@ -5,9 +5,18 @@
     check winner
     check tie
 */
-import { Game } from './game.js';
+import { Game, CurrentPlayer } from './game.js';
+import { GameJsonSerializer, GameJsonDeSerializer } from './save-state.js';
+
 let game = undefined;
-// console.log(Game);
+if (localStorage.getItem("data") !== null) {
+    let loadedData = new GameJsonDeSerializer(localStorage.getItem("data")).deSerialize();
+    game = loadedData;
+    game = new Game(game.player1, game.player2)
+    console.log(game)
+
+
+}
 
 let updateUI = () => {
     if (!game) {
@@ -19,7 +28,70 @@ let updateUI = () => {
         document
             .getElementById("board-holder")
             .classList.remove("is-invisible");
+
+
+        for (let i = 0; i <= 6; i++) {
+            for (let j = 0; j <= 5; j++) {
+                const square = document.getElementById(`square-${j}-${i}`);
+
+                square.innerHTML = '';
+
+                const playerNumber = game.getTokenAt(i, j);
+                if (playerNumber === 1) {
+                    const token = document.createElement('div');
+                    token.classList.add("token");
+                    token.classList.add("black");
+                    square.appendChild(token);
+                }
+                else if (playerNumber === 2) {
+                    const token = document.createElement('div');
+                    token.classList.add("token");
+                    token.classList.add("red");
+                    square.appendChild(token);
+                }
+            }
+        }
+
+        const currentPlayer = player.currentPlayer;
+        const clickTargets = document.getElementById("click-targets");
+        if (currentPlayer === 1) {
+            clickTargets.classList.add("black");
+            clickTargets.classList.remove("red");
+        }
+        else {
+            clickTargets.classList.add("red");
+            clickTargets.classList.remove("black");
+        }
+
+        for (let i = 0; i <= 6; i++) {
+            if (game.isColumnFull(i)) {
+                document
+                    .getElementById(`column-${i}`)
+                    .classList.add("full")
+                document
+                    .getElementById(`column-${i}`)
+                    .setAttribute("disabled", "true")
+            }
+        }
+
+        if (game.checkForTie()) {
+            game.winnerNumber = 3;
+        }
+        game.checkForColumnWin();
+        game.checkForRowWin();
+        game.checkForDiagonalWin();
+
+        document
+            .getElementById("game-name")
+            .innerHTML = game.getName();
+
+        let saveData = new GameJsonSerializer(game).serialize();
+        localStorage.setItem("data", saveData);
     }
+}
+
+let saveUI = () => {
+
 }
 
 const player1 = document.getElementById("player-1-name");
@@ -33,9 +105,11 @@ document.addEventListener("keyup", eve => {
 
 });
 
+//Click New Game
 document
     .getElementById("new-game")
     .addEventListener("click", eve => {
+        // if (game === undefined) {
         game = new Game(player1.value, player2.value);
         document
             .getElementById("board-holder")
@@ -50,71 +124,19 @@ document
         player1.value = "";
         player2.value = "";
         updateUI();
+        // }
     });
 
-
-let counter = 5;
-let columnArr = [];
 let something = document.getElementById("click-targets");
 
-
-for (let i = 0; i <= 6; i++) {
-    let columnSquares = [];
-    document.querySelectorAll(".token-square").forEach(ele => {
-        if (Number(ele.id[9]) === i) {
-            columnSquares.push(ele.id);
-        }
-    });
-    columnArr.push(columnSquares);
-}
-// console.log(columnArr)
-// console.log(column)
-
+//Click token
+const player = new CurrentPlayer(player1.value, player2.value);
 something.addEventListener("click", eve => {
-    let boardSquares = document.querySelectorAll(".token-square");
     let columnNumber = Number(eve.target.id[7]);
-    if (instanceArr[columnNumber].isNotOccupied()) {
-        instanceArr[columnNumber].addToken();
-    }
-    // console.log(instanceArr[columnNumber])
-    // if(instanceArr[columnNumber].isOccupied){
-    //instanceArr[columnNumber].counter
+    if (!game.isColumnFull(columnNumber)) {
+        game.column[columnNumber].add(player.getTurn());
+        player.playInColumn();
 
-    // }
+        updateUI();
+    }
 });
-
-class Column {
-    constructor(columnSquares) {
-        this.counter = 5;
-        this.columnSquares = columnSquares
-    }
-
-    isNotOccupied() { // true if NOT occupied
-        return ((document.getElementById(this.columnSquares[this.counter]).style.backgroundColor !== "red") || (document.getElementById(this.columnSquares[this.counter]).style.backgroundColor !== "black"));
-    }
-
-    addToken() { // add class
-        document
-            .getElementById(this.columnSquares[this.counter])
-            .setAttribute("class", `token-square token > red` /*${red}*/);
-        this.decCounter();
-    }
-
-    decCounter() {
-        this.counter--;
-    }
-}
-
-const col1 = new Column(columnArr[0]);
-const col2 = new Column(columnArr[1]);
-const col3 = new Column(columnArr[2]);
-const col4 = new Column(columnArr[3]);
-const col5 = new Column(columnArr[4]);
-const col6 = new Column(columnArr[5]);
-const col7 = new Column(columnArr[6]);
-const instanceArr = [col1, col2, col3, col4, col5, col6, col7];
-
-
-// document
-//     .getElementById("square-0-0")
-//     .setAttribute("class", "token-square token > red");
